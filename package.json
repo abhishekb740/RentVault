@@ -15,6 +15,7 @@
     "@mui/icons-material": "^5.14.16",
     "@mui/lab": "^5.0.0-alpha.151",
     "@mui/material": "^5.14.14",
+    "@pushprotocol/restapi": "^1.4.32",
     "axios": "^1.6.0",
     "dotenv": "^16.3.1",
     "ethers": "^5.7.2",

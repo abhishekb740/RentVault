@@ -6,6 +6,11 @@ import { useAuth } from "../../context/auth";
 import { uploadFileToIPFS, uploadJSONToIPFS } from "../../pinata";
 import ModalComponet from "../Modal"
 import Loader from "../Loader";
+// import * as PushAPI from "@pushprotocol/restapi";
+// import * as ethers from "ethers";
+// const PK = '3bff4959288c3ab8a809a7f1c6fe8f6ee1c75e245c7e4c451c879928cf9876c9'; // channel private key
+// const Pkey = `0x${PK}`;
+// const _signer = new ethers.Wallet(Pkey);
 
 const VisuallyHiddenInput = styled('input')({
     clip: 'rect(0 0 0 0)',
@@ -34,30 +39,33 @@ export default function RegisterPage() {
     const [loader, setLoader] = useState(false);
 
     console.log(auth);
+
     const handleChangeFormData = (event) => {
         setFormData(prev => ({ ...prev, [event.target.name]: event.target.value }))
     }
-    // const submitHandler = async (e) => {
-    //     e.preventDefault();
-    //     console.log("Hello");
-    //     console.log(formData);
-    //     console.log(auth.contract);
-    //     let contract = auth.contract;
+
+    // const sendNotification = async () => {
     //     try {
-    //         let transaction = await contract.registerOrganization(formData.propertyName, formData.location, formData.price, formData.imageHash);
-    //         await transaction.wait();
-    //         alert("Successfully registered");
+    //         const apiResponse = await PushAPI.payloads.sendNotification({
+    //             signer: _signer,
+    //             type: 1, // broadcast- sends notifications to everyone's who has opt-in
+    //             identityType: 2, // direct payload
+    //             notification: {
+    //                 title: `Property Registration Successful`,
+    //                 body: `Your Property ${formData.propertyName} has been registered successfully.`
+    //             },
+    //             payload: {
+    //                 title: `Blockchain data`,
+    //                 body: "",
+    //                 cta: '', //any relevant link you want them to click
+    //                 img: '' //any relevant image for better UX
+    //             },
+    //             channel: '0x50b040Ac046e66A91D3B0dB103e025131E29aDE9',
+    //             env: 'staging'
+    //         });
+    //     } catch (err) {
+    //         console.error('Error: ', err);
     //     }
-    //     catch (e) {
-    //         alert(e.reason);
-    //     }
-    //     setFormData({
-    //         propertyName: "",
-    //         location: "",
-    //         price: "",
-    //         imageHash: ""
-    //     })
-    //     console.log("Working");
     // }
 
     const handleChangeFile = async (e) => {
@@ -118,6 +126,7 @@ export default function RegisterPage() {
             let transaction = await contract.mint(formData.propertyName, formData.location, formData.price, file);
             await transaction.wait();
             setLoader(false);
+            // sendNotification();
             alert("Successfully minted the Property");
         }
         catch (e) {

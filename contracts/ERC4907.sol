@@ -1,8 +1,17 @@
 // SPDX-License-Identifier: CC0-1.0
 pragma solidity ^0.8.21;
-
+// 0x7893fBa2c1f24E315A6B40F6F675948885B7734C
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "./IERC4907.sol";
+
+// PUSH Comm Contract Interface
+interface IPUSHCommInterface {
+    function sendNotification(
+        address _channel,
+        address _recipient,
+        bytes calldata _identity
+    ) external;
+}
 
 contract ERC4907 is ERC721, IERC4907 {
     uint256 tokenIdCounter;
@@ -35,10 +44,9 @@ contract ERC4907 is ERC721, IERC4907 {
     mapping(address => uint256) public totalNoOfProperties;
     mapping(address => uint256) public balances;
 
-    constructor(
-        string memory name_,
-        string memory symbol_
-    ) ERC721(name_, symbol_) {
+    constructor(string memory name_, string memory symbol_)
+        ERC721(name_, symbol_)
+    {
         tokenIdCounter = 0;
     }
 
@@ -70,6 +78,24 @@ contract ERC4907 is ERC721, IERC4907 {
         );
         setUser(tokenId, _user, expires);
         balances[ownerOf(tokenId)] += _price;
+        IPUSHCommInterface(0xb3971BCef2D791bc4027BbfedFb47319A4AAaaAa)
+            .sendNotification(
+                0x50b040Ac046e66A91D3B0dB103e025131E29aDE9,
+                msg.sender,
+                bytes(
+                    string(
+                        abi.encodePacked(
+                            "0", // this represents minimal identity, learn more: https://push.org/docs/notifications/notification-standards/notification-standards-advance/#notification-identity
+                            "+", // segregator
+                            "3", // define notification type:  https://push.org/docs/notifications/build/types-of-notification (1, 3 or 4) = (Broadcast, targeted or subset)
+                            "+", // segregator
+                            "Property Rent Status", // this is notificaiton title
+                            "+", // segregator
+                            abi.encodePacked("Property Rented Successfully ",listedProperties[tokenId].propertyName," at ", listedProperties[tokenId].location, " for ", listedProperties[tokenId].price) // notification body
+                        )
+                    )
+                )
+            );
         emit PropertyRented(tokenId, _user, expires);
     }
 
@@ -77,9 +103,13 @@ contract ERC4907 is ERC721, IERC4907 {
     /// @dev The zero address indicates that there is no user or the user is expired
     /// @param tokenId The NFT to get the user address for
     /// @return The user address for this NFT
-    function userOf(
-        uint256 tokenId
-    ) public view virtual override returns (address) {
+    function userOf(uint256 tokenId)
+        public
+        view
+        virtual
+        override
+        returns (address)
+    {
         if (uint256(listedProperties[tokenId].expires) >= block.timestamp) {
             return listedProperties[tokenId].user;
         } else {
@@ -91,20 +121,29 @@ contract ERC4907 is ERC721, IERC4907 {
     /// @dev The zero value indicates that there is no user
     /// @param tokenId The NFT to get the user expires for
     /// @return The user expires for this NFT
-    function userExpires(
-        uint256 tokenId
-    ) public view virtual override returns (uint256) {
+    function userExpires(uint256 tokenId)
+        public
+        view
+        virtual
+        override
+        returns (uint256)
+    {
         if (uint256(listedProperties[tokenId].expires) >= block.timestamp) {
             return listedProperties[tokenId].expires;
         } else {
-            return 115792089237316195423570985008687907853269984665640564039457584007913129639935;
+            return
+                115792089237316195423570985008687907853269984665640564039457584007913129639935;
         }
     }
 
     /// @dev See {IERC165-supportsInterface}.
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view virtual override returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override
+        returns (bool)
+    {
         return
             interfaceId == type(IERC4907).interfaceId ||
             super.supportsInterface(interfaceId);
@@ -155,12 +194,12 @@ contract ERC4907 is ERC721, IERC4907 {
         return properties;
     }
 
-    function getRentedProperties(address _addr) public view returns(UserInfo[] memory){
+    function getRentedProperties() public view returns (UserInfo[] memory) {
         uint256 tokenId = tokenIdCounter;
         uint256 propertyCount = 0;
         for (uint256 i = 0; i < tokenId; i++) {
             if (listedProperties[i].expires >= block.timestamp) {
-                if(_addr==userOf(i)){
+                if (msg.sender == userOf(i)) {
                     propertyCount++;
                 }
             }
@@ -169,7 +208,7 @@ contract ERC4907 is ERC721, IERC4907 {
         uint256 j = 0;
         for (uint256 i = 0; i < tokenId; i++) {
             if (listedProperties[i].expires >= block.timestamp) {
-                if(_addr==userOf(i)){
+                if (msg.sender == userOf(i)) {
                     properties[j] = listedProperties[i];
                     j++;
                 }
@@ -199,6 +238,24 @@ contract ERC4907 is ERC721, IERC4907 {
         userProperties[msg.sender].push(tokenId);
         totalNoOfProperties[msg.sender]++;
         _mint(msg.sender, tokenId);
+        IPUSHCommInterface(0xb3971BCef2D791bc4027BbfedFb47319A4AAaaAa)
+            .sendNotification(
+                0x50b040Ac046e66A91D3B0dB103e025131E29aDE9,
+                msg.sender,
+                bytes(
+                    string(
+                        abi.encodePacked(
+                            "0", // this represents minimal identity, learn more: https://push.org/docs/notifications/notification-standards/notification-standards-advance/#notification-identity
+                            "+", // segregator
+                            "3", // define notification type:  https://push.org/docs/notifications/build/types-of-notification (1, 3 or 4) = (Broadcast, targeted or subset)
+                            "+", // segregator
+                            "Property Registration Status", // this is notificaiton title
+                            "+", // segregator
+                            abi.encodePacked("Property Registered Successfully ", _propertyName, " at ", _location, " for ", _price) // notification body
+                        )
+                    )
+                )
+            );
         emit PropertyListed(
             tokenId,
             msg.sender,
@@ -209,7 +266,7 @@ contract ERC4907 is ERC721, IERC4907 {
         );
     }
 
-    function getUserBalance() public view returns(uint256) {
+    function getUserBalance() public view returns (uint256) {
         return balances[msg.sender];
     }
 
