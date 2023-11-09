@@ -13,12 +13,14 @@ import PropertyList from '../components/ListOfProperties';
 import Profile from '../components/Profile';
 import RentedProfile from '../components/RentedProperties';
 import Loader from '../components/Loader';
+import AddFunds from '../components/AddFunds';
 
 const panels = {
     "Register Property": <RegisterPage />,
     "Rent a Property": <PropertyList />,
     "User Profile": <Profile />,
     "Rented Properties": <RentedProfile />,
+    "Add Funds": <AddFunds />,
 }
 
 export default function IndexPage() {

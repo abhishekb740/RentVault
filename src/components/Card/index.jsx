@@ -72,7 +72,7 @@ export default function MediaCard(props) {
                 </CardContent>
                 <CardActions sx={{ display: 'flex', justifyContent: 'space-between' }} >
                     <Chip icon={<CurrencyRupeeIcon/>} label={`${props.property[4]}`} color='primary' />
-                    <Button onClick={submitHandler} >Rent Property</Button>
+                    <Button onClick={submitHandler} sx={{border: '1px solid black'}} >Rent Property</Button>
                 </CardActions>
                 <ModalComponent finalSubmit={() => finalSubmit(parseInt(props.property[6]), parseInt(props.property[4]))} open={open} setOpen={setOpen} message={message} />
             </Card>}

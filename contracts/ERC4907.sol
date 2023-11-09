@@ -28,6 +28,7 @@ contract ERC4907 is ERC721, IERC4907 {
         address indexed user,
         uint256 expires
     );
+    event BalanceAdded(address user, uint256 price);
     struct UserInfo {
         address user;
         uint64 expires;
@@ -76,6 +77,11 @@ contract ERC4907 is ERC721, IERC4907 {
             _price == listedProperties[tokenId].price,
             "Please pay the correct price of the Property"
         );
+        require(
+            balances[_user] >= _price,
+            "Please add sufficient balance to your account"
+        );
+        balances[_user] -= _price;
         setUser(tokenId, _user, expires);
         balances[ownerOf(tokenId)] += _price;
         IPUSHCommInterface(0xb3971BCef2D791bc4027BbfedFb47319A4AAaaAa)
@@ -85,13 +91,20 @@ contract ERC4907 is ERC721, IERC4907 {
                 bytes(
                     string(
                         abi.encodePacked(
-                            "0", // this represents minimal identity, learn more: https://push.org/docs/notifications/notification-standards/notification-standards-advance/#notification-identity
-                            "+", // segregator
-                            "3", // define notification type:  https://push.org/docs/notifications/build/types-of-notification (1, 3 or 4) = (Broadcast, targeted or subset)
-                            "+", // segregator
-                            "Property Rent Status", // this is notificaiton title
-                            "+", // segregator
-                            abi.encodePacked("Property Rented Successfully ",listedProperties[tokenId].propertyName," at ", listedProperties[tokenId].location, " for ", listedProperties[tokenId].price) // notification body
+                            "0",
+                            "+",
+                            "3",
+                            "+",
+                            "Property Rent Status",
+                            "+",
+                            abi.encodePacked(
+                                "Property Rented Successfully ",
+                                listedProperties[tokenId].propertyName,
+                                " at ",
+                                listedProperties[tokenId].location,
+                                " for ",
+                                listedProperties[tokenId].price
+                            )
                         )
                     )
                 )
@@ -194,12 +207,12 @@ contract ERC4907 is ERC721, IERC4907 {
         return properties;
     }
 
-    function getRentedProperties() public view returns (UserInfo[] memory) {
+    function getRentedProperties(address _accountAddr) public view returns (UserInfo[] memory) {
         uint256 tokenId = tokenIdCounter;
         uint256 propertyCount = 0;
         for (uint256 i = 0; i < tokenId; i++) {
             if (listedProperties[i].expires >= block.timestamp) {
-                if (msg.sender == userOf(i)) {
+                if (_accountAddr == userOf(i)) {
                     propertyCount++;
                 }
             }
@@ -208,7 +221,7 @@ contract ERC4907 is ERC721, IERC4907 {
         uint256 j = 0;
         for (uint256 i = 0; i < tokenId; i++) {
             if (listedProperties[i].expires >= block.timestamp) {
-                if (msg.sender == userOf(i)) {
+                if (_accountAddr == userOf(i)) {
                     properties[j] = listedProperties[i];
                     j++;
                 }
@@ -245,13 +258,20 @@ contract ERC4907 is ERC721, IERC4907 {
                 bytes(
                     string(
                         abi.encodePacked(
-                            "0", // this represents minimal identity, learn more: https://push.org/docs/notifications/notification-standards/notification-standards-advance/#notification-identity
-                            "+", // segregator
-                            "3", // define notification type:  https://push.org/docs/notifications/build/types-of-notification (1, 3 or 4) = (Broadcast, targeted or subset)
-                            "+", // segregator
-                            "Property Registration Status", // this is notificaiton title
-                            "+", // segregator
-                            abi.encodePacked("Property Registered Successfully ", _propertyName, " at ", _location, " for ", _price) // notification body
+                            "0",
+                            "+",
+                            "3",
+                            "+",
+                            "Property Registration Status",
+                            "+",
+                            abi.encodePacked(
+                                "Property Registered Successfully ",
+                                _propertyName,
+                                " at ",
+                                _location,
+                                " for ",
+                                _price
+                            )
                         )
                     )
                 )
@@ -268,6 +288,33 @@ contract ERC4907 is ERC721, IERC4907 {
 
     function getUserBalance() public view returns (uint256) {
         return balances[msg.sender];
+    }
+
+    function addUserBalance(uint256 _amount) public {
+        balances[msg.sender] += _amount;
+        IPUSHCommInterface(0xb3971BCef2D791bc4027BbfedFb47319A4AAaaAa)
+            .sendNotification(
+                0x50b040Ac046e66A91D3B0dB103e025131E29aDE9,
+                msg.sender,
+                bytes(
+                    string(
+                        abi.encodePacked(
+                            "0",
+                            "+",
+                            "3",
+                            "+",
+                            "Balance Status",
+                            "+",
+                            abi.encodePacked(
+                                "Your balance of ",
+                                _amount,
+                                " has been successfully added!"
+                            )
+                        )
+                    )
+                )
+            );
+        emit BalanceAdded(msg.sender, _amount);
     }
 
     function time() public view returns (uint256) {
