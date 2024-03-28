@@ -54,7 +54,6 @@ export default function IndexPage() {
                                     width: "100%",
                                     background: "inherit",
                                     boxShadow: 'none',
-
                                 }}
                             >
                                 {panels[e]}

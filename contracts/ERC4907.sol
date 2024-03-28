@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: CC0-1.0
 pragma solidity ^0.8.21;
-// 0x7893fBa2c1f24E315A6B40F6F675948885B7734C
+
+// Importing OpenZeppelin's ERC721 contract
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "./IERC4907.sol";
 
 // PUSH Comm Contract Interface
 interface IPUSHCommInterface {
+    // Function to send a notification
     function sendNotification(
         address _channel,
         address _recipient,
@@ -13,8 +15,12 @@ interface IPUSHCommInterface {
     ) external;
 }
 
+/// @title ERC4907: Real Estate ERC721 Contract
+/// @dev This contract implements an ERC721 token for listing, renting, and managing properties.
 contract ERC4907 is ERC721, IERC4907 {
-    uint256 tokenIdCounter;
+    uint256 tokenIdCounter; // Counter for generating unique token IDs
+
+    // Event emitted when a property is listed for renting
     event PropertyListed(
         uint256 indexed tokenId,
         address indexed owner,
@@ -23,39 +29,56 @@ contract ERC4907 is ERC721, IERC4907 {
         string imageIPFSHash,
         uint256 price
     );
+
+    // Event emitted when a property is rented
     event PropertyRented(
         uint256 indexed tokenId,
         address indexed user,
         uint256 expires
     );
+
+    // Event emitted when a user's balance is added
     event BalanceAdded(address user, uint256 price);
+
+    // Struct to store information about a listed property
     struct UserInfo {
-        address user;
-        uint64 expires;
-        string propertyName;
-        string location;
-        uint256 price;
-        string imageIPFSHash;
-        uint256 tokenId;
-        address owner;
+        address user; // Current user of the property
+        uint64 expires; // Expiration timestamp for renting
+        string propertyName; // Name of the property
+        string location; // Location of the property
+        uint256 price; // Price of the property
+        string imageIPFSHash; // IPFS hash of the property image
+        uint256 tokenId; // ID of the token representing the property
+        address owner; // Owner of the property
     }
 
+    // Mapping to store listed properties
     mapping(uint256 => UserInfo) public listedProperties;
+
+    // Mapping to store properties owned by a user
     mapping(address => uint256[]) public userProperties;
+
+    // Mapping to store the total number of properties owned by a user
     mapping(address => uint256) public totalNoOfProperties;
+
+    // Mapping to store user balances
     mapping(address => uint256) public balances;
 
+    /// @dev Constructor to initialize the ERC721 contract
+    /// @param name_ The name of the ERC721 token
+    /// @param symbol_ The symbol of the ERC721 token
     constructor(string memory name_, string memory symbol_)
         ERC721(name_, symbol_)
     {
-        tokenIdCounter = 0;
+        tokenIdCounter = 0; // Initialize the token ID counter
     }
 
-    /// @notice set the user and expires of an NFT
+    /// @notice Set the user and expiration timestamp of an NFT
     /// @dev The zero address indicates there is no user
-    /// Throws if `tokenId` is not valid NFT
-    /// @param _user  The new user of the NFT
-    /// @param expires  UNIX timestamp, The new user could use the NFT before expires
+    /// Throws if `tokenId` is not a valid NFT
+    /// @param tokenId The ID of the NFT
+    /// @param _user The new user of the NFT
+    /// @param expires The expiration timestamp for renting
     function setUser(
         uint256 tokenId,
         address _user,
@@ -64,26 +87,42 @@ contract ERC4907 is ERC721, IERC4907 {
         UserInfo storage info = listedProperties[tokenId];
         info.user = _user;
         info.expires = expires;
-        emit UpdateUser(tokenId, _user, expires);
+        emit UpdateUser(tokenId, _user, expires); // Emit an event indicating user update
     }
 
+    /// @notice Rent a property
+    /// @param tokenId The ID of the property
+    /// @param _user The user renting the property
+    /// @param expires The expiration timestamp for renting
+    /// @param _price The price for renting the property
     function rentProperty(
         uint256 tokenId,
         address _user,
         uint64 expires,
         uint256 _price
     ) public {
+        // Check if the user paid the correct price
         require(
             _price == listedProperties[tokenId].price,
             "Please pay the correct price of the Property"
         );
+
+        // Check if the user has sufficient balance
         require(
             balances[_user] >= _price,
             "Please add sufficient balance to your account"
         );
+
+        // Deduct the price from the user's balance
         balances[_user] -= _price;
+
+        // Set the user and expiration for the property
         setUser(tokenId, _user, expires);
+
+        // Transfer the price to the property owner
         balances[ownerOf(tokenId)] += _price;
+
+        // Send a notification about property rental
         IPUSHCommInterface(0xb3971BCef2D791bc4027BbfedFb47319A4AAaaAa)
             .sendNotification(
                 0x50b040Ac046e66A91D3B0dB103e025131E29aDE9,
@@ -109,12 +148,12 @@ contract ERC4907 is ERC721, IERC4907 {
                     )
                 )
             );
-        emit PropertyRented(tokenId, _user, expires);
+
+        emit PropertyRented(tokenId, _user, expires); // Emit an event for property rental
     }
 
     /// @notice Get the user address of an NFT
-    /// @dev The zero address indicates that there is no user or the user is expired
-    /// @param tokenId The NFT to get the user address for
+    /// @param tokenId The ID of the NFT
     /// @return The user address for this NFT
     function userOf(uint256 tokenId)
         public
@@ -130,10 +169,9 @@ contract ERC4907 is ERC721, IERC4907 {
         }
     }
 
-    /// @notice Get the user expires of an NFT
-    /// @dev The zero value indicates that there is no user
-    /// @param tokenId The NFT to get the user expires for
-    /// @return The user expires for this NFT
+    /// @notice Get the expiration timestamp of an NFT
+    /// @param tokenId The ID of the NFT
+    /// @return The expiration timestamp for this NFT
     function userExpires(uint256 tokenId)
         public
         view
@@ -162,18 +200,8 @@ contract ERC4907 is ERC721, IERC4907 {
             super.supportsInterface(interfaceId);
     }
 
-    // function _beforeTokenTransfer(
-    //     address from,
-    //     address to,
-    //     uint256 tokenId,
-    //     uint256 /** batch **/
-    // ) internal virtual override {
-    //     if (from != to && listedProperties[tokenId].user != address(0)) {
-    //         delete listedProperties[tokenId];
-    //         emit UpdateUser(tokenId, address(0), 0);
-    //     }
-    // }
-
+    /// @notice Get all available properties for renting
+    /// @return An array of available properties
     function allAvailableRentingProperties()
         public
         view
@@ -197,6 +225,8 @@ contract ERC4907 is ERC721, IERC4907 {
         return properties;
     }
 
+    /// @notice Get properties owned by the caller
+    /// @return An array of properties owned by the caller
     function getUserProperties() public view returns (UserInfo[] memory) {
         UserInfo[] memory properties = new UserInfo[](
             totalNoOfProperties[msg.sender]
@@ -207,6 +237,9 @@ contract ERC4907 is ERC721, IERC4907 {
         return properties;
     }
 
+    /// @notice Get properties rented by a specific account
+    /// @param _accountAddr The account address to check for rented properties
+    /// @return An array of properties rented by the account
     function getRentedProperties(address _accountAddr) public view returns (UserInfo[] memory) {
         uint256 tokenId = tokenIdCounter;
         uint256 propertyCount = 0;
@@ -230,6 +263,11 @@ contract ERC4907 is ERC721, IERC4907 {
         return properties;
     }
 
+    /// @notice Mint a new property NFT
+    /// @param _propertyName The name of the property
+    /// @param _location The location of the property
+    /// @param _price The price of the property
+    /// @param _imageIPFSHash The IPFS hash of the property image
     function mint(
         string memory _propertyName,
         string memory _location,
@@ -250,7 +288,8 @@ contract ERC4907 is ERC721, IERC4907 {
         });
         userProperties[msg.sender].push(tokenId);
         totalNoOfProperties[msg.sender]++;
-        _mint(msg.sender, tokenId);
+        _mint(msg.sender, tokenId); // Mint the new NFT
+        // Send a notification about the property registration
         IPUSHCommInterface(0xb3971BCef2D791bc4027BbfedFb47319A4AAaaAa)
             .sendNotification(
                 0x50b040Ac046e66A91D3B0dB103e025131E29aDE9,
@@ -286,12 +325,17 @@ contract ERC4907 is ERC721, IERC4907 {
         );
     }
 
+    /// @notice Get the balance of the caller
+    /// @return The balance of the caller
     function getUserBalance() public view returns (uint256) {
         return balances[msg.sender];
     }
 
+    /// @notice Add balance to the caller's account
+    /// @param _amount The amount to add to the balance
     function addUserBalance(uint256 _amount) public {
         balances[msg.sender] += _amount;
+        // Send a notification about the balance update
         IPUSHCommInterface(0xb3971BCef2D791bc4027BbfedFb47319A4AAaaAa)
             .sendNotification(
                 0x50b040Ac046e66A91D3B0dB103e025131E29aDE9,
@@ -314,9 +358,11 @@ contract ERC4907 is ERC721, IERC4907 {
                     )
                 )
             );
-        emit BalanceAdded(msg.sender, _amount);
+        emit BalanceAdded(msg.sender, _amount); // Emit an event for balance update
     }
 
+    /// @notice Get the current block timestamp
+    /// @return The current block timestamp
     function time() public view returns (uint256) {
         return block.timestamp;
     }
